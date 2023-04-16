@@ -340,8 +340,6 @@ int manageMatches(char*** patterns, char** sequences, int** foundMatches,
     shared(patterns, matchCounter, patternLengths, patternCount) \
     shared(sequences, threadsPerThread) \
     num_threads(threadCount)
-//        #pragma omp single
-//        {
     for (int i = 0; i < sequenceCount; i++) {
         char** currentPatterns;
         size_t patternLength, currentSize;
@@ -355,11 +353,6 @@ int manageMatches(char*** patterns, char** sequences, int** foundMatches,
             matchCounter[i] = 0;
             patternLength = patternLengths[i];
             currentPatterns = patterns[i];
-//                #pragma omp task default(none) \
-//                firstprivate(patternLength, currentPatterns, currentSize, i) \
-//                shared(patternCount, sequences, foundMatches, matchCounter) \
-//                shared(threadsPerThread, errorOccurred)
-//                {
             char commonStart[patternLength];
             if (patternCount[i] == 1) strcpy(commonStart, currentPatterns[0]);
             else {
@@ -372,20 +365,25 @@ int manageMatches(char*** patterns, char** sequences, int** foundMatches,
                 errorOccurred = 1;
             }
         }
-//                }
-//            }
     }
     for (int i  = 0; i < sequenceCount; i++) {
         foundMatches[i] = realloc(foundMatches[i], matchCounter[i] * sizeof(int));
-        if (!foundMatches[i]) {
+        if (!foundMatches[i] && matchCounter[i]) {
             errorOccurred = 1;
         }
     }
     return errorOccurred == 0;
 }
 
+int sortFunction (const void* itemA, const void* itemB) {
+    return *(int*) itemA - *(int*) itemB;
+}
+
 int DNA_Search(FILE* file, int threadCount, int threadsPerThread) {
-    if (threadCount < 1) return 0;
+    if (threadCount < 1) {
+        printf("Invalid input.\n");
+        return 0;
+    }
     int sequenceCount = 0;
     int maxSequenceLength = 0;
 
@@ -449,6 +447,11 @@ int DNA_Search(FILE* file, int threadCount, int threadsPerThread) {
         return 0;
     }
 
+    /* Sort found matches */
+    for (int i = 0; i < sequenceCount; i++) {
+        qsort(foundMatches[i], matchCounter[i], sizeof(int), sortFunction);
+    }
+
     for (int i = 0; i < sequenceCount; i++) {
         printf("Occurrences in sequence %d: %d\n", i+1, matchCounter[i]);
         for (int j = 0; j < matchCounter[i]; j++) {
@@ -469,6 +472,12 @@ int main() {
         printf("File not found.\n");
         return -1;
     }
-    if (!DNA_Search(file, 4, 0)) return -1;
+    double start, end;
+    start = omp_get_wtime();
+    if (!DNA_Search(file, 4, 4)) {
+        return -1;
+    }
+    end = omp_get_wtime();
+    printf("Time taken: %g seconds.\n", end - start);
     return 0;
 }
