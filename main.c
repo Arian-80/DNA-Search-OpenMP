@@ -192,7 +192,7 @@ int parseSequences(FILE* file, char** sequences, int sequenceCount, int maxSeque
     for (int i = 0; i < sequenceCount; i++) {
         fscanf(file, "%s", seqBuffer);
         currentLength = strlen(seqBuffer);
-        sequences[i] = (char*) malloc(currentLength * sizeof(char));
+        sequences[i] = (char*) malloc((currentLength+1) * sizeof(char));
         if (!sequences[i]) {
             free_full_2DArray((void**) sequences, i); // Free all up to i
             return 0;
@@ -452,12 +452,13 @@ int DNA_Search(FILE* file, int threadCount, int threadsPerThread) {
         qsort(foundMatches[i], matchCounter[i], sizeof(int), sortFunction);
     }
 
-    for (int i = 0; i < sequenceCount; i++) {
-        printf("Occurrences in sequence %d: %d\n", i+1, matchCounter[i]);
-        for (int j = 0; j < matchCounter[i]; j++) {
-            printf("Occurrence %d at index: %d\n", j+1, foundMatches[i][j]);
-        }
-    }
+    /* Print results */
+//    for (int i = 0; i < sequenceCount; i++) {
+//        printf("Occurrences in sequence %d: %d\n", i+1, matchCounter[i]);
+//        for (int j = 0; j < matchCounter[i]; j++) {
+//            printf("Occurrence %d at index: %d\n", j+1, foundMatches[i][j]);
+//        }
+//    }
 
     free_pattern_arrays(patterns, patternLengths, sequenceCount,
                         sequenceCount, patternCount);
@@ -467,17 +468,26 @@ int DNA_Search(FILE* file, int threadCount, int threadsPerThread) {
 }
 
 int main() {
-    FILE *file = getFile("sequences.txt");
-    if (!file) {
-        printf("File not found.\n");
-        return -1;
+    for (int k = 1; k < 9; k++) {
+        if (k == 3) k = 4;
+        if (k == 5) k = 6;
+        if (k == 7) k = 8;
+        FILE *file = getFile("sequences3.txt");
+        if (!file) {
+            printf("File not found.\n");
+            return -1;
+        }
+        double start, end;
+        int result;
+        start = omp_get_wtime();
+        result = DNA_Search(file, k, 1);
+        end = omp_get_wtime();
+        if (!result) return -1;
+        printf("Time taken: %g seconds.\n", end - start);
+        FILE *f = fopen("times.txt", "a");
+        fprintf(f, "%g,", end - start);
+        fclose(f);
+        fclose(file);
     }
-    double start, end;
-    start = omp_get_wtime();
-    if (!DNA_Search(file, 4, 4)) {
-        return -1;
-    }
-    end = omp_get_wtime();
-    printf("Time taken: %g seconds.\n", end - start);
     return 0;
 }
