@@ -244,6 +244,7 @@ int findMatches(char** currentPatterns, char* sequence, char* commonStart,
             index = (int) (commonStartMatch - sequence) + offset;
             #pragma omp critical
             {
+                // Critical region
                 foundMatches[currIndex][*currMatchCounter] = index;
                 (*currMatchCounter)++;
             }
@@ -253,6 +254,7 @@ int findMatches(char** currentPatterns, char* sequence, char* commonStart,
         if (*currMatchCounter >= (int) *currentSize) { // Enlarge array
             #pragma omp critical
             {
+                // Critical region
                 (*currentSize) *= 2;
                 foundMatches[currIndex] = (int *)
                         realloc(foundMatches[currIndex], (*currentSize) * sizeof(int));
@@ -279,6 +281,7 @@ int parallel_manageMatches(char** currentPatterns, char* sequence, char* commonS
 
     int errorOccurred = 0;
 
+    // Done in parallel
     #pragma omp parallel \
     default(none) \
     shared(sequenceLength, extraThreads, remainder, patternLength, errorOccurred) \
@@ -335,6 +338,7 @@ int manageMatches(char*** patterns, char** sequences, int** foundMatches,
     size_t currentSizes[sequenceCount];
 
     int errorOccurred = 0;
+    // Parallel region
     #pragma omp parallel for default(none) \
     shared(currentSizes, sequenceCount, errorOccurred, foundMatches) \
     shared(patterns, matchCounter, patternLengths, patternCount) \
@@ -468,26 +472,21 @@ int DNA_Search(FILE* file, int threadCount, int threadsPerThread) {
 }
 
 int main() {
-    for (int k = 1; k < 9; k++) {
-        if (k == 3) k = 4;
-        if (k == 5) k = 6;
-        if (k == 7) k = 8;
-        FILE *file = getFile("sequences3.txt");
-        if (!file) {
-            printf("File not found.\n");
-            return -1;
-        }
-        double start, end;
-        int result;
-        start = omp_get_wtime();
-        result = DNA_Search(file, k, 1);
-        end = omp_get_wtime();
-        if (!result) return -1;
-        printf("Time taken: %g seconds.\n", end - start);
-        FILE *f = fopen("times.txt", "a");
-        fprintf(f, "%g,", end - start);
-        fclose(f);
-        fclose(file);
+    FILE *file = getFile("sequences.txt");
+    if (!file) {
+        printf("File not found.\n");
+        return -1;
     }
+    double start, end;
+    int result;
+    start = omp_get_wtime();
+    result = DNA_Search(file, 1, 1);
+    end = omp_get_wtime();
+    if (!result) return -1;
+    printf("Time taken: %g seconds.\n", end - start);
+    FILE *f = fopen("times.txt", "a");
+    fprintf(f, "%g,", end - start);
+    fclose(f);
+    fclose(file);
     return 0;
 }
